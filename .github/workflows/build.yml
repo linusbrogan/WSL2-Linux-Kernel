@@ -1,0 +1,39 @@
+# See https://docs.oracle.com/javase/tutorial/deployment/jar/signing.html
+name: Create release and build from tag
+
+# Run on any tag that looks like a version number or an iteration number
+on:
+  push:
+    tags: [ "build-*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install build dependencies
+        run: sudo apt-get install -y build-essential flex bison dwarves libssl-dev libelf-dev
+
+      - name: Compile
+        run: make KCONFIG_CONFIG=Microsoft/config-wsl
+
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+
+      - name: Upload build to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: vmlinux
+          asset_name: vmlinux
+          asset_content_type: application/x-elf
